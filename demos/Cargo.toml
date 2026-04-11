@@ -31,6 +31,7 @@ esp-backtrace = { version = "0.18.1", features = [
 esp-println = { version = "0.16.1", features = ["esp32c6", "log-04"] }
 jd9853 = { path = "../jd9853", features = ["graphics"] }
 qmi8658 = { path = "../qmi8658" }
+qr = { git = "https://github.com/fan2nd/qr.git" }
 
 
 [profile.dev]
