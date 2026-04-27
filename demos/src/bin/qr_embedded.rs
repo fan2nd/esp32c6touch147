@@ -17,6 +17,7 @@ use embedded_graphics::{
     text::Text,
 };
 use embedded_hal_bus::spi::ExclusiveDevice;
+use embedded_qr::{QrBuilder, QrMatrix, Version3};
 use esp_hal::{
     clock::CpuClock,
     delay::Delay,
@@ -30,7 +31,6 @@ use esp_hal::{
 };
 use jd9853::{Jd9853, Jd9853Config};
 use log::info;
-use qr::{Ecc, EncodeOptions, QrEncoder, Version3, VersionTrait};
 
 use esp_backtrace as _;
 
@@ -42,6 +42,7 @@ const HEADER_COLOR: Rgb565 = Rgb565::BLACK;
 const QR_LIGHT: Rgb565 = Rgb565::WHITE;
 const QR_DARK: Rgb565 = Rgb565::BLACK;
 const TEXT_COLOR: Rgb565 = Rgb565::WHITE;
+const QR_PAYLOAD: &[u8] = b"HELLO C6";
 
 fn draw_background<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
 where
@@ -65,21 +66,17 @@ where
         .text_color(TEXT_COLOR)
         .build();
 
-    Text::new("hello embassy", Point::new(10, 18), text_style).draw(display)?;
-    Text::new("QR encode_draw", Point::new(10, 42), text_style).draw(display)?;
+    Text::new("embedded-qr", Point::new(10, 18), text_style).draw(display)?;
+    Text::new("QR Demo", Point::new(10, 42), text_style).draw(display)?;
 
     Ok(())
 }
 
-fn draw_qr_encode_draw<DRAW>(
-    display: &mut DRAW,
-    encoder: &QrEncoder<Version3>,
-    payload: &str,
-) -> Result<(), qr::Error>
+fn draw_qr<DRAW>(display: &mut DRAW, qr: &QrMatrix<Version3>) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
-    let modules = <Version3 as VersionTrait>::SIZE as i32;
+    let modules = qr.width() as i32;
     let quiet_modules = 4;
     let full_modules = modules + quiet_modules * 2;
 
@@ -98,31 +95,20 @@ where
         Size::new(qr_side as u32, qr_side as u32),
     )
     .into_styled(PrimitiveStyleBuilder::new().fill_color(QR_LIGHT).build())
-    .draw(display)
-    .ok();
+    .draw(display)?;
 
     let dark_style = PrimitiveStyleBuilder::new().fill_color(QR_DARK).build();
-    let mut draw_failed = false;
+    for y in 0..modules {
+        for x in 0..modules {
+            if qr.get(x as usize, y as usize) {
+                let px = origin_x + (x + quiet_modules) * scale;
+                let py = origin_y + (y + quiet_modules) * scale;
 
-    encoder.draw_str(payload, EncodeOptions { ecc: Ecc::M }, |x, y, dark| {
-        if draw_failed || !dark {
-            return;
+                Rectangle::new(Point::new(px, py), Size::new(scale as u32, scale as u32))
+                    .into_styled(dark_style)
+                    .draw(display)?;
+            }
         }
-
-        let px = origin_x + (x as i32 + quiet_modules) * scale;
-        let py = origin_y + (y as i32 + quiet_modules) * scale;
-
-        if Rectangle::new(Point::new(px, py), Size::new(scale as u32, scale as u32))
-            .into_styled(dark_style)
-            .draw(display)
-            .is_err()
-        {
-            draw_failed = true;
-        }
-    })?;
-
-    if draw_failed {
-        panic!("QR encode_draw render failed");
     }
 
     Ok(())
@@ -180,12 +166,19 @@ async fn main(spawner: Spawner) -> ! {
     display.init(&mut delay).expect("LCD init failed");
     display.set_display_on(true).expect("LCD on failed");
 
-    let encoder = QrEncoder::<Version3>::new();
+    let qr_matrix = QrBuilder::<Version3>::new()
+        .build(QR_PAYLOAD)
+        .expect("QR encode failed");
 
     draw_background(&mut display).expect("Background draw failed");
-    draw_qr_encode_draw(&mut display, &encoder, "hello embassy").expect("QR encode_draw failed");
+    draw_qr(&mut display, &qr_matrix).expect("QR draw failed");
 
-    info!("QR encode_draw demo ready: payload = \"hello embassy\", version = 3, ecc = M");
+    info!(
+        "embedded-qr demo ready: payload = {:?}, version = 3, ecc = {:?}, mask = {:?}",
+        core::str::from_utf8(QR_PAYLOAD).unwrap_or("<binary>"),
+        qr_matrix.ecc_level(),
+        qr_matrix.mask()
+    );
 
     loop {
         Timer::after(Duration::from_secs(1)).await;
