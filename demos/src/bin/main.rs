@@ -10,10 +10,7 @@
 use axs5106::{Axs5106, Axs5106Config};
 use core::cell::RefCell;
 use embedded_graphics::{
-    mono_font::{
-        MonoTextStyleBuilder,
-        ascii::FONT_10X20,
-    },
+    mono_font::{MonoTextStyleBuilder, ascii::FONT_10X20},
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{Circle, PrimitiveStyleBuilder, Rectangle},
@@ -63,8 +60,13 @@ fn clamp_ball_center(point: Point, diameter: u32) -> Point {
     let radius = (diameter as i32) / 2;
     let min_y = HEADER_HEIGHT + radius + CIRCLE_MARGIN;
     Point::new(
-        point.x.clamp(radius + CIRCLE_MARGIN, SCREEN_WIDTH - radius - CIRCLE_MARGIN - 1),
-        point.y.clamp(min_y, SCREEN_HEIGHT - radius - CIRCLE_MARGIN - 1),
+        point.x.clamp(
+            radius + CIRCLE_MARGIN,
+            SCREEN_WIDTH - radius - CIRCLE_MARGIN - 1,
+        ),
+        point
+            .y
+            .clamp(min_y, SCREEN_HEIGHT - radius - CIRCLE_MARGIN - 1),
     )
 }
 
@@ -139,7 +141,11 @@ where
     Ok(())
 }
 
-fn erase_circle<DRAW>(display: &mut DRAW, circle_center: Point, diameter: u32) -> Result<(), DRAW::Error>
+fn erase_circle<DRAW>(
+    display: &mut DRAW,
+    circle_center: Point,
+    diameter: u32,
+) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
@@ -315,10 +321,8 @@ async fn main(spawner: Spawner) -> ! {
 
         match touch.read_touches() {
             Ok(Some(point)) => {
-                next_touch = clamp_ball_center(
-                    Point::new(point.x as i32, point.y as i32),
-                    CIRCLE_DIAMETER,
-                );
+                next_touch =
+                    clamp_ball_center(Point::new(point.x as i32, point.y as i32), CIRCLE_DIAMETER);
                 next_touch_visible = true;
             }
             Ok(None) => {
@@ -350,7 +354,8 @@ async fn main(spawner: Spawner) -> ! {
         if level_changed || touch_changed {
             erase_circle(&mut display, level_circle, LEVEL_DIAMETER).expect("Level erase failed");
             if touch_visible {
-                erase_circle(&mut display, touch_circle, CIRCLE_DIAMETER).expect("Touch erase failed");
+                erase_circle(&mut display, touch_circle, CIRCLE_DIAMETER)
+                    .expect("Touch erase failed");
             }
 
             level_circle = next_level;
@@ -360,8 +365,13 @@ async fn main(spawner: Spawner) -> ! {
             draw_circle(&mut display, level_circle, LEVEL_DIAMETER, LEVEL_FILL_COLOR)
                 .expect("Level draw failed");
             if touch_visible {
-                draw_circle(&mut display, touch_circle, CIRCLE_DIAMETER, CIRCLE1_FILL_COLOR)
-                    .expect("Touch draw failed");
+                draw_circle(
+                    &mut display,
+                    touch_circle,
+                    CIRCLE_DIAMETER,
+                    CIRCLE1_FILL_COLOR,
+                )
+                .expect("Touch draw failed");
             }
         }
         Timer::after(Duration::from_millis(10)).await;

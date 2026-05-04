@@ -10,7 +10,10 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use embedded_graphics::{
-    mono_font::{MonoTextStyleBuilder, ascii::FONT_10X20},
+    mono_font::{
+        MonoTextStyleBuilder,
+        ascii::{FONT_6X10, FONT_10X20},
+    },
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
@@ -30,7 +33,7 @@ use esp_hal::{
 };
 use jd9853::{Jd9853, Jd9853Config};
 use log::info;
-use lvgl_font_bridge::{EgTextStyle, FontPreset, lvgl_font};
+use lvgl_font_bridge::{FontData, FontPreset, lvgl_font};
 
 use esp_backtrace as _;
 
@@ -41,16 +44,62 @@ const HEADER_COLOR: Rgb565 = Rgb565::BLACK;
 const PANEL_COLOR: Rgb565 = Rgb565::new(4, 12, 18);
 const PANEL_BORDER: Rgb565 = Rgb565::new(8, 20, 30);
 const TEXT_COLOR: Rgb565 = Rgb565::WHITE;
+const LABEL_COLOR: Rgb565 = Rgb565::new(18, 36, 44);
 const SAMPLE_COLOR: Rgb565 = Rgb565::new(31, 58, 18);
-const INVERSE_BG: Rgb565 = Rgb565::new(31, 58, 18);
-const INVERSE_TEXT: Rgb565 = Rgb565::BLACK;
-const DEMO_TEXT: &str = "rust, 牛逼";
-const HELLO_FONT: FontPreset<'static> = lvgl_font!(
+const DEMO_TEXT: &str = "rust,牛逼!";
+
+const ORIGIN_FONT: FontData<'static> = lvgl_font!(
     path = "./src/asserts/hello.c",
-    half_width = 18,
-    full_width = 36,
-    height = 36,
+    half_width = 8,
+    full_width = 16,
+    height = 16,
 );
+
+const HELLO_FONT_12: FontPreset<'static> = FontPreset::new(&ORIGIN_FONT).with_scaled_height(12);
+const HELLO_FONT_16: FontPreset<'static> = FontPreset::new(&ORIGIN_FONT).with_scaled_height(16);
+const HELLO_FONT_20: FontPreset<'static> = FontPreset::new(&ORIGIN_FONT).with_scaled_height(20);
+const HELLO_FONT_24: FontPreset<'static> = FontPreset::new(&ORIGIN_FONT).with_scaled_height(24);
+
+fn scaled_cell_width(character: char, scaled_height: u32) -> i32 {
+    let base_width = if character.is_ascii() { 8 } else { 16 };
+    (((base_width * scaled_height) + 8) / 16) as i32
+}
+
+fn draw_scaled_sample<DRAW>(
+    display: &mut DRAW,
+    label: &str,
+    sample_y: i32,
+    scaled_height: u32,
+    font: &FontPreset<'static>,
+) -> Result<(), DRAW::Error>
+where
+    DRAW: DrawTarget<Color = Rgb565>,
+{
+    let label_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(LABEL_COLOR)
+        .build();
+    let text_style = font.text_style(SAMPLE_COLOR, scaled_height);
+    let mut cursor_x = 44;
+
+    Text::new(label, Point::new(18, sample_y + 10), label_style).draw(display)?;
+
+    for character in DEMO_TEXT.chars() {
+        let mut encoded = [0_u8; 4];
+        let glyph = character.encode_utf8(&mut encoded);
+
+        Text::with_baseline(
+            glyph,
+            Point::new(cursor_x, sample_y),
+            text_style,
+            Baseline::Top,
+        )
+        .draw(display)?;
+        cursor_x += scaled_cell_width(character, scaled_height);
+    }
+
+    Ok(())
+}
 
 fn draw_demo<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
 where
@@ -71,7 +120,7 @@ where
 
     Rectangle::new(
         Point::new(8, 72),
-        Size::new((SCREEN_WIDTH - 16) as u32, 156),
+        Size::new((SCREEN_WIDTH - 16) as u32, 170),
     )
     .into_styled(
         PrimitiveStyleBuilder::new()
@@ -86,27 +135,19 @@ where
         .font(&FONT_10X20)
         .text_color(TEXT_COLOR)
         .build();
+    let body_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(TEXT_COLOR)
+        .build();
+
     Text::new("lvgl-font-bridge", Point::new(10, 18), title_style).draw(display)?;
-    Text::new("hello.c demo", Point::new(10, 42), title_style).draw(display)?;
-    Text::new("glyphs:", Point::new(16, 96), title_style).draw(display)?;
+    Text::new("scaled_height demo", Point::new(10, 42), title_style).draw(display)?;
+    Text::new("base bitmap: 8 / 16 / 16", Point::new(16, 90), body_style).draw(display)?;
 
-    let hello_style = HELLO_FONT.default_text_style(SAMPLE_COLOR);
-    let inverse_style = EgTextStyle::with_background(
-        HELLO_FONT.font_data(),
-        INVERSE_TEXT,
-        INVERSE_BG,
-        HELLO_FONT.height,
-        HELLO_FONT.half_width,
-        HELLO_FONT.full_width,
-    );
-
-    Text::with_baseline(DEMO_TEXT, Point::new(16, 132), hello_style, Baseline::Top)
-        .draw(display)?;
-    Text::with_baseline(DEMO_TEXT, Point::new(16, 172), inverse_style, Baseline::Top)
-        .draw(display)?;
-    Text::new("from hello.c", Point::new(16, 212), title_style).draw(display)?;
-    Text::with_baseline(DEMO_TEXT, Point::new(16, 238), hello_style, Baseline::Top)
-        .draw(display)?;
+    draw_scaled_sample(display, "12", 108, 12, &HELLO_FONT_12)?;
+    draw_scaled_sample(display, "16", 134, 16, &HELLO_FONT_16)?;
+    draw_scaled_sample(display, "20", 164, 20, &HELLO_FONT_20)?;
+    draw_scaled_sample(display, "24", 198, 24, &HELLO_FONT_24)?;
 
     Ok(())
 }

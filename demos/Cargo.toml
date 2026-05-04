@@ -42,7 +42,7 @@ esp-radio = { version = "0.17.0", features = [
   "unstable",
 ] }
 jd9853 = { path = "../jd9853", features = ["graphics", "async"] }
-lvgl-font-bridge = { git = "https://github.com/fan2nd/lvgl-font-bridge", rev = "f3fda1d317418f433796304697cdd0580288e82c", features = ["macros"] }
+lvgl-font-bridge = { git = "https://github.com/fan2nd/lvgl-font-bridge", rev = "a0cb3dd" }
 qmi8658 = { path = "../qmi8658" }
 static_cell = "2.1.1"
 trouble-host = { version = "0.5.0", features = ["gatt"] }
