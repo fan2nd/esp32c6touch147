@@ -49,7 +49,7 @@ const SAMPLE_COLOR: Rgb565 = Rgb565::new(31, 58, 18);
 const DEMO_TEXT: &str = "rust,牛逼!";
 
 const ORIGIN_FONT: FontData<'static> = lvgl_font!(
-    path = "./src/asserts/hello.c",
+    path = "./src/assets/hello.c",
     half_width = 8,
     full_width = 16,
     height = 16,
