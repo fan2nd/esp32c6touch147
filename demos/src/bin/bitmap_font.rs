@@ -9,7 +9,7 @@
 
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-use embedded_bitmap_font::{BitmapFont, BitmapText, CellPolicy, CellSize, TextStyle};
+use embedded_bitmap_font::{DrawableText, FontData};
 use embedded_graphics::{
     Drawable,
     mono_font::{
@@ -82,7 +82,7 @@ const SAMPLE_TEXT: &str = "Hello Rust 你好";
 struct FontPage {
     title: &'static str,
     font_name: &'static str,
-    font: &'static BitmapFont<'static>,
+    font: &'static FontData<'static>,
     color: Rgb565,
 }
 
@@ -125,36 +125,35 @@ const FONT_PAGES: &[FontPage] = &[
     },
 ];
 
-fn boxed_text<'a>(
-    text: &'a str,
-    font: &'a BitmapFont<'a>,
-    top_left: Point,
-    text_color: Rgb565,
-) -> BitmapText<'a, Rgb565> {
-    let mut style = TextStyle::new(text_color);
-    style.cell_policy = CellPolicy {
-        ascii: CellSize::GlyphAdvance,
-        non_ascii: CellSize::Fixed {
-            width: font.size,
-            height: font.size,
-        },
-    };
-    style.char_spacing = 1;
-
-    let dry_run = BitmapText::new(text, font, Rectangle::new(top_left, Size::zero()), style);
-    let measured = dry_run.measure();
-    BitmapText::new(text, font, Rectangle::new(top_left, measured), style)
+fn cell_sizes(font: &FontData<'_>) -> (Size, Size) {
+    let cjk = Size::new(font.char_size as u32, font.char_size as u32);
+    let ascii_width = (font.char_size as u32).saturating_sub(2).max(6);
+    let ascii = Size::new(ascii_width, font.char_size as u32);
+    (ascii, cjk)
 }
 
-fn draw_boxed_text<DRAW>(
+fn draw_text_box<DRAW>(
     display: &mut DRAW,
-    text: &BitmapText<'_, Rgb565>,
+    text: &'_ str,
+    font: &'_ FontData<'_>,
+    top_left: Point,
+    text_color: Rgb565,
 ) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
-    text.draw(display)?;
-    text.area
+    let (ascii_cell_size, cjk_cell_size) = cell_sizes(font);
+    let drawable = DrawableText::new(
+        font,
+        text,
+        top_left,
+        ascii_cell_size,
+        cjk_cell_size,
+        text_color,
+    );
+    let measured = drawable.measure();
+    drawable.draw(display)?;
+    Rectangle::new(top_left, measured)
         .into_styled(
             PrimitiveStyleBuilder::new()
                 .stroke_color(BOX_COLOR)
@@ -207,7 +206,8 @@ where
         .build();
 
     Text::new("bitmap-font", Point::new(10, 18), title_style).draw(display)?;
-    Text::new(page.title, Point::new(10, 42), body_style).draw(display)?;
+    Text::new("FontData / DrawableText", Point::new(10, 42), body_style).draw(display)?;
+    Text::new(page.title, Point::new(10, 58), body_style).draw(display)?;
 
     let page_label = match page_index % FONT_PAGES.len() {
         0 => "page 1/6",
@@ -217,37 +217,19 @@ where
         4 => "page 5/6",
         _ => "page 6/6",
     };
-    Text::new(page_label, Point::new(118, 42), body_style).draw(display)?;
+    Text::new(page_label, Point::new(118, 58), body_style).draw(display)?;
 
     Text::new(page.font_name, Point::new(16, 86), body_style).draw(display)?;
-    Text::new(
-        "Each drawable area is boxed",
-        Point::new(16, 104),
-        body_style,
-    )
-    .draw(display)?;
+    Text::new("ASCII and CJK use different cell sizes", Point::new(16, 104), body_style)
+        .draw(display)?;
 
-    let first = boxed_text(SAMPLE_TEXT, page.font, Point::new(16, 134), page.color);
-    draw_boxed_text(display, &first)?;
-
-    let second = boxed_text("Rust 你好", page.font, Point::new(16, 176), page.color);
-    draw_boxed_text(display, &second)?;
-
-    let third = boxed_text("Hello", page.font, Point::new(16, 218), page.color);
-    draw_boxed_text(display, &third)?;
+    draw_text_box(display, SAMPLE_TEXT, page.font, Point::new(16, 134), page.color)?;
+    draw_text_box(display, "Rust 你好", page.font, Point::new(16, 176), page.color)?;
+    draw_text_box(display, "Hello", page.font, Point::new(16, 218), page.color)?;
 
     Ok(())
 }
 
-// This creates a default app-descriptor required by the esp-idf bootloader.
-// For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
-esp_bootloader_esp_idf::esp_app_desc!();
-
-#[allow(
-    clippy::large_stack_frames,
-    reason = "it's not unusual to allocate larger buffers etc. in main"
-)]
-#[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     esp_println::logger::init_logger_from_env();
 

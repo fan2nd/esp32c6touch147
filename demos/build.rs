@@ -92,6 +92,7 @@ fn font_from_file(ident: &str, path: &str, px: f32, size: u16) -> io::Result<Cod
 
     Ok(CodegenFont {
         ident: ident.to_string(),
+        index: SAMPLE_GLYPHS.iter().collect(),
         size,
         ascent: (size as i16) - 3,
         descent: -3,
