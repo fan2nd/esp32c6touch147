@@ -230,6 +230,7 @@ where
     Ok(())
 }
 
+#[esp_rtos::main]
 async fn main(spawner: Spawner) -> ! {
     esp_println::logger::init_logger_from_env();
 
