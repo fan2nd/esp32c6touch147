@@ -269,15 +269,15 @@ where
         .build();
 
     Text::new("bitmap-font", Point::new(10, 18), title_style).draw(display)?;
-    Text::new("y_offset follows screen Y", Point::new(10, 42), body_style).draw(display)?;
-    Text::new("Offset compare", Point::new(10, 58), body_style).draw(display)?;
-    Text::new("page 7/7", Point::new(118, 58), body_style).draw(display)?;
     Text::new(
-        "positive = down, negative = up",
-        Point::new(16, 86),
+        "y_offset glyph metric compare",
+        Point::new(10, 42),
         body_style,
     )
     .draw(display)?;
+    Text::new("Offset compare", Point::new(10, 58), body_style).draw(display)?;
+    Text::new("page 7/7", Point::new(118, 58), body_style).draw(display)?;
+    Text::new("positive metric = down", Point::new(16, 86), body_style).draw(display)?;
 
     let mut y = 122;
     for sample in OFFSET_SAMPLES {
