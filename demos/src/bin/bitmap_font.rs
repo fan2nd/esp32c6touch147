@@ -9,7 +9,7 @@
 
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-use embedded_bitmap_font::{BitmapText, CellPolicy, CellSize, TextStyle};
+use embedded_bitmap_font::{BitmapFont, BitmapText, CellPolicy, CellSize, TextStyle};
 use embedded_graphics::{
     Drawable,
     mono_font::{
@@ -38,12 +38,36 @@ use log::info;
 
 use esp_backtrace as _;
 
-include!(concat!(env!("OUT_DIR"), "/cubic_font.rs"));
-include!(concat!(env!("OUT_DIR"), "/unifont_demo_font.rs"));
+mod cubic_font_12 {
+    include!(concat!(env!("OUT_DIR"), "/cubic_font_12.rs"));
+}
+mod cubic_font_18 {
+    include!(concat!(env!("OUT_DIR"), "/cubic_font_18.rs"));
+}
+mod cubic_font_24 {
+    include!(concat!(env!("OUT_DIR"), "/cubic_font_24.rs"));
+}
+mod unifont_demo_font_12 {
+    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_12.rs"));
+}
+mod unifont_demo_font_18 {
+    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_18.rs"));
+}
+mod unifont_demo_font_24 {
+    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_24.rs"));
+}
+
+use cubic_font_12::CUBIC_DEMO_FONT_12;
+use cubic_font_18::CUBIC_DEMO_FONT_18;
+use cubic_font_24::CUBIC_DEMO_FONT_24;
+use unifont_demo_font_12::UNIFONT_DEMO_FONT_12;
+use unifont_demo_font_18::UNIFONT_DEMO_FONT_18;
+use unifont_demo_font_24::UNIFONT_DEMO_FONT_24;
 
 const SCREEN_WIDTH: i32 = 172;
 const SCREEN_HEIGHT: i32 = 320;
-const HEADER_HEIGHT: i32 = 56;
+const HEADER_HEIGHT: i32 = 50;
+const PAGE_SECONDS: u64 = 4;
 const BG_COLOR: Rgb565 = Rgb565::new(2, 6, 10);
 const HEADER_COLOR: Rgb565 = Rgb565::BLACK;
 const PANEL_COLOR: Rgb565 = Rgb565::new(4, 12, 18);
@@ -55,9 +79,55 @@ const UNIFONT_COLOR: Rgb565 = Rgb565::new(10, 48, 31);
 const BOX_COLOR: Rgb565 = Rgb565::new(31, 24, 4);
 const SAMPLE_TEXT: &str = "Hello Rust 你好";
 
+struct FontPage {
+    title: &'static str,
+    font_name: &'static str,
+    font: &'static BitmapFont<'static>,
+    color: Rgb565,
+}
+
+const FONT_PAGES: &[FontPage] = &[
+    FontPage {
+        title: "Cubic size 12",
+        font_name: "Cubic_11.ttf @ 12px",
+        font: &CUBIC_DEMO_FONT_12,
+        color: CUBIC_COLOR,
+    },
+    FontPage {
+        title: "Cubic size 18",
+        font_name: "Cubic_11.ttf @ 18px",
+        font: &CUBIC_DEMO_FONT_18,
+        color: CUBIC_COLOR,
+    },
+    FontPage {
+        title: "Cubic size 24",
+        font_name: "Cubic_11.ttf @ 24px",
+        font: &CUBIC_DEMO_FONT_24,
+        color: CUBIC_COLOR,
+    },
+    FontPage {
+        title: "Unifont size 12",
+        font_name: "unifont-17.0.04.otf @ 12px",
+        font: &UNIFONT_DEMO_FONT_12,
+        color: UNIFONT_COLOR,
+    },
+    FontPage {
+        title: "Unifont size 18",
+        font_name: "unifont-17.0.04.otf @ 18px",
+        font: &UNIFONT_DEMO_FONT_18,
+        color: UNIFONT_COLOR,
+    },
+    FontPage {
+        title: "Unifont size 24",
+        font_name: "unifont-17.0.04.otf @ 24px",
+        font: &UNIFONT_DEMO_FONT_24,
+        color: UNIFONT_COLOR,
+    },
+];
+
 fn boxed_text<'a>(
     text: &'a str,
-    font: &'a embedded_bitmap_font::BitmapFont<'a>,
+    font: &'a BitmapFont<'a>,
     top_left: Point,
     text_color: Rgb565,
 ) -> BitmapText<'a, Rgb565> {
@@ -71,12 +141,7 @@ fn boxed_text<'a>(
     };
     style.char_spacing = 1;
 
-    let dry_run = BitmapText::new(
-        SAMPLE_TEXT,
-        font,
-        Rectangle::new(top_left, Size::zero()),
-        style,
-    );
+    let dry_run = BitmapText::new(text, font, Rectangle::new(top_left, Size::zero()), style);
     let measured = dry_run.measure();
     BitmapText::new(text, font, Rectangle::new(top_left, measured), style)
 }
@@ -100,10 +165,12 @@ where
     Ok(())
 }
 
-fn draw_demo<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
+fn draw_page<DRAW>(display: &mut DRAW, page_index: usize) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
+    let page = &FONT_PAGES[page_index % FONT_PAGES.len()];
+
     display.clear(BG_COLOR)?;
 
     Rectangle::new(
@@ -118,8 +185,8 @@ where
     .draw(display)?;
 
     Rectangle::new(
-        Point::new(8, 72),
-        Size::new((SCREEN_WIDTH - 16) as u32, (SCREEN_HEIGHT - 88) as u32),
+        Point::new(8, 66),
+        Size::new((SCREEN_WIDTH - 16) as u32, (SCREEN_HEIGHT - 82) as u32),
     )
     .into_styled(
         PrimitiveStyleBuilder::new()
@@ -140,25 +207,34 @@ where
         .build();
 
     Text::new("bitmap-font", Point::new(10, 18), title_style).draw(display)?;
-    Text::new("drawable bounds", Point::new(10, 42), title_style).draw(display)?;
+    Text::new(page.title, Point::new(10, 42), body_style).draw(display)?;
 
-    Text::new("Cubic_11.ttf", Point::new(16, 92), body_style).draw(display)?;
-    let cubic = boxed_text(
-        SAMPLE_TEXT,
-        &CUBIC_DEMO_FONT,
-        Point::new(16, 112),
-        CUBIC_COLOR,
-    );
-    draw_boxed_text(display, &cubic)?;
+    let page_label = match page_index % FONT_PAGES.len() {
+        0 => "page 1/6",
+        1 => "page 2/6",
+        2 => "page 3/6",
+        3 => "page 4/6",
+        4 => "page 5/6",
+        _ => "page 6/6",
+    };
+    Text::new(page_label, Point::new(118, 42), body_style).draw(display)?;
 
-    Text::new("unifont-17.0.04.otf", Point::new(16, 166), body_style).draw(display)?;
-    let unifont = boxed_text(
-        SAMPLE_TEXT,
-        &UNIFONT_DEMO_FONT,
-        Point::new(16, 186),
-        UNIFONT_COLOR,
-    );
-    draw_boxed_text(display, &unifont)?;
+    Text::new(page.font_name, Point::new(16, 86), body_style).draw(display)?;
+    Text::new(
+        "Each drawable area is boxed",
+        Point::new(16, 104),
+        body_style,
+    )
+    .draw(display)?;
+
+    let first = boxed_text(SAMPLE_TEXT, page.font, Point::new(16, 134), page.color);
+    draw_boxed_text(display, &first)?;
+
+    let second = boxed_text("Rust 你好", page.font, Point::new(16, 176), page.color);
+    draw_boxed_text(display, &second)?;
+
+    let third = boxed_text("Hello", page.font, Point::new(16, 218), page.color);
+    draw_boxed_text(display, &third)?;
 
     Ok(())
 }
@@ -215,11 +291,16 @@ async fn main(spawner: Spawner) -> ! {
     display.init(&mut delay).expect("LCD init failed");
     display.set_display_on(true).expect("LCD on failed");
 
-    draw_demo(&mut display).expect("bitmap font demo draw failed");
-
-    info!("embedded-bitmap-font demo ready: text = {}", SAMPLE_TEXT);
-
+    let mut page_index = 0;
     loop {
-        Timer::after(Duration::from_secs(1)).await;
+        draw_page(&mut display, page_index).expect("bitmap font demo draw failed");
+        info!(
+            "embedded-bitmap-font demo page {} / {}: text = {}",
+            (page_index % FONT_PAGES.len()) + 1,
+            FONT_PAGES.len(),
+            SAMPLE_TEXT
+        );
+        page_index = (page_index + 1) % FONT_PAGES.len();
+        Timer::after(Duration::from_secs(PAGE_SECONDS)).await;
     }
 }

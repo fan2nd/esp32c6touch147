@@ -2,26 +2,73 @@ use embedded_bitmap_font_codegen::{BitmapGlyph, CodegenFont, FontWriter, GlyphBi
 use fontdue::{Font, FontSettings};
 use std::{env, fs, io, path::PathBuf};
 
+const SAMPLE_GLYPHS: [char; 11] = ['H', 'e', 'l', 'o', ' ', 'R', 'u', 's', 't', '你', '好'];
+
+struct FontBuildSpec {
+    file_name: &'static str,
+    ident: &'static str,
+    path: &'static str,
+    px: f32,
+    size: u16,
+}
+
+const FONT_SPECS: &[FontBuildSpec] = &[
+    FontBuildSpec {
+        file_name: "cubic_font_12.rs",
+        ident: "CUBIC_DEMO_FONT_12",
+        path: "src/assets/Cubic_11.ttf",
+        px: 12.0,
+        size: 12,
+    },
+    FontBuildSpec {
+        file_name: "cubic_font_18.rs",
+        ident: "CUBIC_DEMO_FONT_18",
+        path: "src/assets/Cubic_11.ttf",
+        px: 18.0,
+        size: 18,
+    },
+    FontBuildSpec {
+        file_name: "cubic_font_24.rs",
+        ident: "CUBIC_DEMO_FONT_24",
+        path: "src/assets/Cubic_11.ttf",
+        px: 24.0,
+        size: 24,
+    },
+    FontBuildSpec {
+        file_name: "unifont_demo_font_12.rs",
+        ident: "UNIFONT_DEMO_FONT_12",
+        path: "src/assets/unifont-17.0.04.otf",
+        px: 12.0,
+        size: 12,
+    },
+    FontBuildSpec {
+        file_name: "unifont_demo_font_18.rs",
+        ident: "UNIFONT_DEMO_FONT_18",
+        path: "src/assets/unifont-17.0.04.otf",
+        px: 18.0,
+        size: 18,
+    },
+    FontBuildSpec {
+        file_name: "unifont_demo_font_24.rs",
+        ident: "UNIFONT_DEMO_FONT_24",
+        path: "src/assets/unifont-17.0.04.otf",
+        px: 24.0,
+        size: 24,
+    },
+];
+
 fn main() -> io::Result<()> {
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
 
-    write_demo_font(
-        "cubic_font.rs",
-        font_from_file("CUBIC_DEMO_FONT", "src/assets/Cubic_11.ttf", 18.0, 18)?,
-    )?;
-    write_demo_font(
-        "unifont_demo_font.rs",
-        font_from_file(
-            "UNIFONT_DEMO_FONT",
-            "src/assets/unifont-17.0.04.otf",
-            18.0,
-            18,
-        )?,
-    )?;
-    println!("cargo:rerun-if-changed=src/assets/Cubic_11.ttf");
-    println!("cargo:rerun-if-changed=src/assets/unifont-17.0.04.otf");
+    for spec in FONT_SPECS {
+        write_demo_font(
+            spec.file_name,
+            font_from_file(spec.ident, spec.path, spec.px, spec.size)?,
+        )?;
+        println!("cargo:rerun-if-changed={}", spec.path);
+    }
 
     Ok(())
 }
@@ -38,7 +85,7 @@ fn font_from_file(ident: &str, path: &str, px: f32, size: u16) -> io::Result<Cod
     let bytes = fs::read(path)?;
     let font = Font::from_bytes(bytes, FontSettings::default())
         .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
-    let glyphs = ['H', 'e', 'l', 'o', ' ', 'R', 'u', 's', 't', '你', '好']
+    let glyphs = SAMPLE_GLYPHS
         .into_iter()
         .map(|codepoint| rasterize_glyph(&font, codepoint, px))
         .collect();

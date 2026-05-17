@@ -48,10 +48,10 @@ static_cell = "2.1.1"
 trouble-host = { version = "0.5.0", features = ["gatt"] }
 embedded-qr = "0.1.0"
 u8g2-fonts = "0.6.0"
-embedded-bitmap-font = { path = "../../../crates/embedded-bitmap-font" }
+embedded-bitmap-font = { git = "https://github.com/fan2nd/embedded-text.git" }
 
 [build-dependencies]
-embedded-bitmap-font-codegen = { path = "../../../crates/embedded-bitmap-font-codegen" }
+embedded-bitmap-font-codegen = { git = "https://github.com/fan2nd/embedded-text.git" }
 fontdue = "0.9"
 
 [profile.dev]
