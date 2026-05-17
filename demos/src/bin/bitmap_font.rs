@@ -318,7 +318,7 @@ where
     .draw(display)?;
     Text::new("Offset compare", Point::new(10, 58), body_style).draw(display)?;
     Text::new("page 7/8", Point::new(118, 58), body_style).draw(display)?;
-    Text::new("positive metric = down", Point::new(16, 86), body_style).draw(display)?;
+    Text::new("positive y_offset = down", Point::new(16, 86), body_style).draw(display)?;
 
     let mut y = 122;
     for sample in OFFSET_SAMPLES {

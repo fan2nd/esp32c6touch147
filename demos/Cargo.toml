@@ -48,8 +48,8 @@ static_cell = "2.1.1"
 trouble-host = { version = "0.5.0", features = ["gatt"] }
 embedded-qr = "0.1.0"
 u8g2-fonts = "0.6.0"
-embedded-bitmap-font = { git = "https://github.com/fan2nd/embedded-text.git", rev = "0dea304" }
-embedded-bitmap-font-macros = { git = "https://github.com/fan2nd/embedded-text.git", rev = "0dea304" }
+embedded-bitmap-font = { git = "https://github.com/fan2nd/embedded-text.git", rev = "ba3d236" }
+embedded-bitmap-font-macros = { git = "https://github.com/fan2nd/embedded-text.git", rev = "ba3d236" }
 
 [profile.dev]
 # Rust debug is too slow.
