@@ -10,7 +10,7 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use embedded_bitmap_font::{DrawableText, FontData};
-use embedded_bitmap_font_macros::{bitmap_font, bitmap_fonts};
+use embedded_bitmap_font_macros::font_data;
 use embedded_graphics::{
     Drawable,
     mono_font::{
@@ -58,52 +58,41 @@ const UNIFONT_COLOR: Rgb565 = Rgb565::new(10, 48, 31);
 const BOX_COLOR: Rgb565 = Rgb565::new(31, 24, 4);
 const SAMPLE_TEXT: &str = "Hello Rust 你好";
 
-bitmap_fonts! {
+static CUBIC_DEMO_FONT_12: FontData<'static> = font_data! {
+    size: 12,
     path: "src/assets/Cubic_11.ttf",
-    glyphs: "Hello Rust 你好",
-    pub static {
-        CUBIC_DEMO_FONT_12: embedded_bitmap_font::FontData<'static> = 12,
-        CUBIC_DEMO_FONT_18: embedded_bitmap_font::FontData<'static> = 18,
-        CUBIC_DEMO_FONT_24: embedded_bitmap_font::FontData<'static> = 24,
-    }
-}
+    index: "Hello Rust 你好",
+};
 
-mod unifont_12 {
-    use super::*;
-    bitmap_font! {
-        pub static UNIFONT_DEMO_FONT_12: embedded_bitmap_font::FontData<'static> = {
-            path: "src/assets/unifont-17.0.04.otf",
-            size: 12,
-            glyphs: "Hello Rust 你好",
-        };
-    }
-}
+static CUBIC_DEMO_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/Cubic_11.ttf",
+    index: "Hello Rust 你好",
+};
 
-mod unifont_18 {
-    use super::*;
-    bitmap_font! {
-        pub static UNIFONT_DEMO_FONT_18: embedded_bitmap_font::FontData<'static> = {
-            path: "src/assets/unifont-17.0.04.otf",
-            size: 18,
-            glyphs: "Hello Rust 你好",
-        };
-    }
-}
+static CUBIC_DEMO_FONT_24: FontData<'static> = font_data! {
+    size: 24,
+    path: "src/assets/Cubic_11.ttf",
+    index: "Hello Rust 你好",
+};
 
-mod unifont_24 {
-    use super::*;
-    bitmap_font! {
-        pub static UNIFONT_DEMO_FONT_24: embedded_bitmap_font::FontData<'static> = {
-            path: "src/assets/unifont-17.0.04.otf",
-            size: 24,
-            glyphs: "Hello Rust 你好",
-        };
-    }
-}
+static UNIFONT_DEMO_FONT_12: FontData<'static> = font_data! {
+    size: 12,
+    path: "src/assets/unifont-17.0.04.otf",
+    index: "Hello Rust 你好",
+};
 
-use unifont_12::UNIFONT_DEMO_FONT_12;
-use unifont_18::UNIFONT_DEMO_FONT_18;
-use unifont_24::UNIFONT_DEMO_FONT_24;
+static UNIFONT_DEMO_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/unifont-17.0.04.otf",
+    index: "Hello Rust 你好",
+};
+
+static UNIFONT_DEMO_FONT_24: FontData<'static> = font_data! {
+    size: 24,
+    path: "src/assets/unifont-17.0.04.otf",
+    index: "Hello Rust 你好",
+};
 
 struct FontPage {
     title: &'static str,
