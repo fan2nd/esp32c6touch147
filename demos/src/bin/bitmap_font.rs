@@ -62,36 +62,42 @@ static CUBIC_DEMO_FONT_12: FontData<'static> = font_data! {
     size: 12,
     path: "src/assets/Cubic_11.ttf",
     index: "Hello Rust 你好",
+    y_offset: 1,
 };
 
 static CUBIC_DEMO_FONT_18: FontData<'static> = font_data! {
     size: 18,
     path: "src/assets/Cubic_11.ttf",
     index: "Hello Rust 你好",
+    y_offset: 2,
 };
 
 static CUBIC_DEMO_FONT_24: FontData<'static> = font_data! {
     size: 24,
     path: "src/assets/Cubic_11.ttf",
     index: "Hello Rust 你好",
+    y_offset: 3,
 };
 
 static UNIFONT_DEMO_FONT_12: FontData<'static> = font_data! {
     size: 12,
     path: "src/assets/unifont-17.0.04.otf",
     index: "Hello Rust 你好",
+    y_offset: -1,
 };
 
 static UNIFONT_DEMO_FONT_18: FontData<'static> = font_data! {
     size: 18,
     path: "src/assets/unifont-17.0.04.otf",
     index: "Hello Rust 你好",
+    y_offset: -2,
 };
 
 static UNIFONT_DEMO_FONT_24: FontData<'static> = font_data! {
     size: 24,
     path: "src/assets/unifont-17.0.04.otf",
     index: "Hello Rust 你好",
+    y_offset: -3,
 };
 
 struct FontPage {
@@ -100,6 +106,50 @@ struct FontPage {
     font: &'static FontData<'static>,
     color: Rgb565,
 }
+
+struct OffsetSample {
+    label: &'static str,
+    font: &'static FontData<'static>,
+    color: Rgb565,
+}
+
+static OFFSET_BASE_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/Cubic_11.ttf",
+    index: "Offset 0",
+};
+
+static OFFSET_DOWN_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/Cubic_11.ttf",
+    index: "Offset +6",
+    y_offset: 6,
+};
+
+static OFFSET_UP_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/Cubic_11.ttf",
+    index: "Offset -6",
+    y_offset: -6,
+};
+
+const OFFSET_SAMPLES: &[OffsetSample] = &[
+    OffsetSample {
+        label: "y_offset: -6 (up)",
+        font: &OFFSET_UP_FONT_18,
+        color: UNIFONT_COLOR,
+    },
+    OffsetSample {
+        label: "y_offset: 0",
+        font: &OFFSET_BASE_FONT_18,
+        color: TEXT_COLOR,
+    },
+    OffsetSample {
+        label: "y_offset: +6 (down)",
+        font: &OFFSET_DOWN_FONT_18,
+        color: CUBIC_COLOR,
+    },
+];
 
 const FONT_PAGES: &[FontPage] = &[
     FontPage {
@@ -179,10 +229,80 @@ where
     Ok(())
 }
 
+fn draw_offset_page<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
+where
+    DRAW: DrawTarget<Color = Rgb565>,
+{
+    display.clear(BG_COLOR)?;
+
+    Rectangle::new(
+        Point::new(0, 0),
+        Size::new(SCREEN_WIDTH as u32, HEADER_HEIGHT as u32),
+    )
+    .into_styled(
+        PrimitiveStyleBuilder::new()
+            .fill_color(HEADER_COLOR)
+            .build(),
+    )
+    .draw(display)?;
+
+    Rectangle::new(
+        Point::new(8, 66),
+        Size::new((SCREEN_WIDTH - 16) as u32, (SCREEN_HEIGHT - 82) as u32),
+    )
+    .into_styled(
+        PrimitiveStyleBuilder::new()
+            .fill_color(PANEL_COLOR)
+            .stroke_color(PANEL_BORDER)
+            .stroke_width(1)
+            .build(),
+    )
+    .draw(display)?;
+
+    let title_style = MonoTextStyleBuilder::new()
+        .font(&FONT_10X20)
+        .text_color(TEXT_COLOR)
+        .build();
+    let body_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(LABEL_COLOR)
+        .build();
+
+    Text::new("bitmap-font", Point::new(10, 18), title_style).draw(display)?;
+    Text::new("y_offset follows screen Y", Point::new(10, 42), body_style).draw(display)?;
+    Text::new("Offset compare", Point::new(10, 58), body_style).draw(display)?;
+    Text::new("page 7/7", Point::new(118, 58), body_style).draw(display)?;
+    Text::new(
+        "positive = down, negative = up",
+        Point::new(16, 86),
+        body_style,
+    )
+    .draw(display)?;
+
+    let mut y = 122;
+    for sample in OFFSET_SAMPLES {
+        Text::new(sample.label, Point::new(16, y - 16), body_style).draw(display)?;
+        draw_text_box(
+            display,
+            sample.font.index,
+            sample.font,
+            Point::new(16, y),
+            sample.color,
+        )?;
+        y += 56;
+    }
+
+    Ok(())
+}
+
 fn draw_page<DRAW>(display: &mut DRAW, page_index: usize) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
+    if page_index % (FONT_PAGES.len() + 1) == FONT_PAGES.len() {
+        return draw_offset_page(display);
+    }
+
     let page = &FONT_PAGES[page_index % FONT_PAGES.len()];
 
     display.clear(BG_COLOR)?;
@@ -224,13 +344,14 @@ where
     Text::new("FontData / DrawableText", Point::new(10, 42), body_style).draw(display)?;
     Text::new(page.title, Point::new(10, 58), body_style).draw(display)?;
 
-    let page_label = match page_index % FONT_PAGES.len() {
-        0 => "page 1/6",
-        1 => "page 2/6",
-        2 => "page 3/6",
-        3 => "page 4/6",
-        4 => "page 5/6",
-        _ => "page 6/6",
+    let page_label = match page_index % (FONT_PAGES.len() + 1) {
+        0 => "page 1/7",
+        1 => "page 2/7",
+        2 => "page 3/7",
+        3 => "page 4/7",
+        4 => "page 5/7",
+        5 => "page 6/7",
+        _ => "page 7/7",
     };
     Text::new(page_label, Point::new(118, 58), body_style).draw(display)?;
 
@@ -310,11 +431,11 @@ async fn main(spawner: Spawner) -> ! {
         draw_page(&mut display, page_index).expect("bitmap font demo draw failed");
         info!(
             "embedded-bitmap-font demo page {} / {}: text = {}",
-            (page_index % FONT_PAGES.len()) + 1,
-            FONT_PAGES.len(),
+            (page_index % (FONT_PAGES.len() + 1)) + 1,
+            FONT_PAGES.len() + 1,
             SAMPLE_TEXT
         );
-        page_index = (page_index + 1) % FONT_PAGES.len();
+        page_index = (page_index + 1) % (FONT_PAGES.len() + 1);
         Timer::after(Duration::from_secs(PAGE_SECONDS)).await;
     }
 }
