@@ -49,10 +49,7 @@ trouble-host = { version = "0.5.0", features = ["gatt"] }
 embedded-qr = "0.1.0"
 u8g2-fonts = "0.6.0"
 embedded-bitmap-font = { git = "https://github.com/fan2nd/embedded-text.git" }
-
-[build-dependencies]
-embedded-bitmap-font-codegen = { git = "https://github.com/fan2nd/embedded-text.git" }
-fontdue = "0.9"
+embedded-bitmap-font-macros = { git = "https://github.com/fan2nd/embedded-text.git" }
 
 [profile.dev]
 # Rust debug is too slow.

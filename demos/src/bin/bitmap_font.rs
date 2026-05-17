@@ -10,6 +10,7 @@
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use embedded_bitmap_font::{DrawableText, FontData};
+use embedded_bitmap_font_macros::{bitmap_font, bitmap_fonts};
 use embedded_graphics::{
     Drawable,
     mono_font::{
@@ -38,32 +39,6 @@ use log::info;
 
 use esp_backtrace as _;
 
-mod cubic_font_12 {
-    include!(concat!(env!("OUT_DIR"), "/cubic_font_12.rs"));
-}
-mod cubic_font_18 {
-    include!(concat!(env!("OUT_DIR"), "/cubic_font_18.rs"));
-}
-mod cubic_font_24 {
-    include!(concat!(env!("OUT_DIR"), "/cubic_font_24.rs"));
-}
-mod unifont_demo_font_12 {
-    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_12.rs"));
-}
-mod unifont_demo_font_18 {
-    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_18.rs"));
-}
-mod unifont_demo_font_24 {
-    include!(concat!(env!("OUT_DIR"), "/unifont_demo_font_24.rs"));
-}
-
-use cubic_font_12::CUBIC_DEMO_FONT_12;
-use cubic_font_18::CUBIC_DEMO_FONT_18;
-use cubic_font_24::CUBIC_DEMO_FONT_24;
-use unifont_demo_font_12::UNIFONT_DEMO_FONT_12;
-use unifont_demo_font_18::UNIFONT_DEMO_FONT_18;
-use unifont_demo_font_24::UNIFONT_DEMO_FONT_24;
-
 const SCREEN_WIDTH: i32 = 172;
 const SCREEN_HEIGHT: i32 = 320;
 const HEADER_HEIGHT: i32 = 50;
@@ -78,6 +53,53 @@ const CUBIC_COLOR: Rgb565 = Rgb565::new(31, 52, 12);
 const UNIFONT_COLOR: Rgb565 = Rgb565::new(10, 48, 31);
 const BOX_COLOR: Rgb565 = Rgb565::new(31, 24, 4);
 const SAMPLE_TEXT: &str = "Hello Rust 你好";
+
+bitmap_fonts! {
+    path: "src/assets/Cubic_11.ttf",
+    glyphs: "Hello Rust 你好",
+    pub static {
+        CUBIC_DEMO_FONT_12: embedded_bitmap_font::FontData<'static> = 12,
+        CUBIC_DEMO_FONT_18: embedded_bitmap_font::FontData<'static> = 18,
+        CUBIC_DEMO_FONT_24: embedded_bitmap_font::FontData<'static> = 24,
+    }
+}
+
+mod unifont_12 {
+    use super::*;
+    bitmap_font! {
+        pub static UNIFONT_DEMO_FONT_12: embedded_bitmap_font::FontData<'static> = {
+            path: "src/assets/unifont-17.0.04.otf",
+            size: 12,
+            glyphs: "Hello Rust 你好",
+        };
+    }
+}
+
+mod unifont_18 {
+    use super::*;
+    bitmap_font! {
+        pub static UNIFONT_DEMO_FONT_18: embedded_bitmap_font::FontData<'static> = {
+            path: "src/assets/unifont-17.0.04.otf",
+            size: 18,
+            glyphs: "Hello Rust 你好",
+        };
+    }
+}
+
+mod unifont_24 {
+    use super::*;
+    bitmap_font! {
+        pub static UNIFONT_DEMO_FONT_24: embedded_bitmap_font::FontData<'static> = {
+            path: "src/assets/unifont-17.0.04.otf",
+            size: 24,
+            glyphs: "Hello Rust 你好",
+        };
+    }
+}
+
+use unifont_12::UNIFONT_DEMO_FONT_12;
+use unifont_18::UNIFONT_DEMO_FONT_18;
+use unifont_24::UNIFONT_DEMO_FONT_24;
 
 struct FontPage {
     title: &'static str,
@@ -220,11 +242,27 @@ where
     Text::new(page_label, Point::new(118, 58), body_style).draw(display)?;
 
     Text::new(page.font_name, Point::new(16, 86), body_style).draw(display)?;
-    Text::new("ASCII and CJK use different cell sizes", Point::new(16, 104), body_style)
-        .draw(display)?;
+    Text::new(
+        "ASCII and CJK use different cell sizes",
+        Point::new(16, 104),
+        body_style,
+    )
+    .draw(display)?;
 
-    draw_text_box(display, SAMPLE_TEXT, page.font, Point::new(16, 134), page.color)?;
-    draw_text_box(display, "Rust 你好", page.font, Point::new(16, 176), page.color)?;
+    draw_text_box(
+        display,
+        SAMPLE_TEXT,
+        page.font,
+        Point::new(16, 134),
+        page.color,
+    )?;
+    draw_text_box(
+        display,
+        "Rust 你好",
+        page.font,
+        Point::new(16, 176),
+        page.color,
+    )?;
     draw_text_box(display, "Hello", page.font, Point::new(16, 218), page.color)?;
 
     Ok(())
