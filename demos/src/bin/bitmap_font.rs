@@ -9,7 +9,7 @@
 
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
-use embedded_bitmap_font::{DrawableText, FontData};
+use embedded_bitmap_font::{DrawableText, FontData, VerticalDrawableText};
 use embedded_bitmap_font_macros::font_data;
 use embedded_graphics::{
     Drawable,
@@ -57,6 +57,8 @@ const CUBIC_COLOR: Rgb565 = Rgb565::new(31, 52, 12);
 const UNIFONT_COLOR: Rgb565 = Rgb565::new(10, 48, 31);
 const BOX_COLOR: Rgb565 = Rgb565::new(31, 24, 4);
 const SAMPLE_TEXT: &str = "Hello Rust 你好";
+const MULTILINE_HORIZONTAL_TEXT: &str = "Hello Rust\n你好 Rust";
+const MULTILINE_VERTICAL_TEXT: &str = "竖排\nRust\n你好";
 
 static CUBIC_DEMO_FONT_12: FontData<'static> = font_data! {
     size: 12,
@@ -98,6 +100,13 @@ static UNIFONT_DEMO_FONT_24: FontData<'static> = font_data! {
     path: "src/assets/unifont-17.0.04.otf",
     index: "Hello Rust 你好",
     y_offset: -3,
+};
+
+static MULTILINE_DEMO_FONT_18: FontData<'static> = font_data! {
+    size: 18,
+    path: "src/assets/unifont-17.0.04.otf",
+    index: "Hello Rust\n你好竖排",
+    y_offset: -2,
 };
 
 struct FontPage {
@@ -229,6 +238,38 @@ where
     Ok(())
 }
 
+fn draw_vertical_text_box<DRAW>(
+    display: &mut DRAW,
+    text: &'_ str,
+    font: &'_ FontData<'_>,
+    top_left: Point,
+    text_color: Rgb565,
+) -> Result<(), DRAW::Error>
+where
+    DRAW: DrawTarget<Color = Rgb565>,
+{
+    let (ascii_cell_size, cjk_cell_size) = cell_sizes(font);
+    let drawable = VerticalDrawableText::new(
+        font,
+        text,
+        top_left,
+        ascii_cell_size,
+        cjk_cell_size,
+        text_color,
+    );
+    let measured = drawable.measure();
+    drawable.draw(display)?;
+    Rectangle::new(top_left, measured)
+        .into_styled(
+            PrimitiveStyleBuilder::new()
+                .stroke_color(BOX_COLOR)
+                .stroke_width(1)
+                .build(),
+        )
+        .draw(display)?;
+    Ok(())
+}
+
 fn draw_offset_page<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
@@ -276,7 +317,7 @@ where
     )
     .draw(display)?;
     Text::new("Offset compare", Point::new(10, 58), body_style).draw(display)?;
-    Text::new("page 7/7", Point::new(118, 58), body_style).draw(display)?;
+    Text::new("page 7/8", Point::new(118, 58), body_style).draw(display)?;
     Text::new("positive metric = down", Point::new(16, 86), body_style).draw(display)?;
 
     let mut y = 122;
@@ -295,15 +336,86 @@ where
     Ok(())
 }
 
+fn draw_multiline_page<DRAW>(display: &mut DRAW) -> Result<(), DRAW::Error>
+where
+    DRAW: DrawTarget<Color = Rgb565>,
+{
+    display.clear(BG_COLOR)?;
+
+    Rectangle::new(
+        Point::new(0, 0),
+        Size::new(SCREEN_WIDTH as u32, HEADER_HEIGHT as u32),
+    )
+    .into_styled(
+        PrimitiveStyleBuilder::new()
+            .fill_color(HEADER_COLOR)
+            .build(),
+    )
+    .draw(display)?;
+
+    Rectangle::new(
+        Point::new(8, 66),
+        Size::new((SCREEN_WIDTH - 16) as u32, (SCREEN_HEIGHT - 82) as u32),
+    )
+    .into_styled(
+        PrimitiveStyleBuilder::new()
+            .fill_color(PANEL_COLOR)
+            .stroke_color(PANEL_BORDER)
+            .stroke_width(1)
+            .build(),
+    )
+    .draw(display)?;
+
+    let title_style = MonoTextStyleBuilder::new()
+        .font(&FONT_10X20)
+        .text_color(TEXT_COLOR)
+        .build();
+    let body_style = MonoTextStyleBuilder::new()
+        .font(&FONT_6X10)
+        .text_color(LABEL_COLOR)
+        .build();
+
+    Text::new("bitmap-font", Point::new(10, 18), title_style).draw(display)?;
+    Text::new("Multiline layout", Point::new(10, 42), body_style).draw(display)?;
+    Text::new("Horizontal + vertical", Point::new(10, 58), body_style).draw(display)?;
+    Text::new("page 8/8", Point::new(118, 58), body_style).draw(display)?;
+
+    Text::new("DrawableText", Point::new(16, 86), body_style).draw(display)?;
+    draw_text_box(
+        display,
+        MULTILINE_HORIZONTAL_TEXT,
+        &MULTILINE_DEMO_FONT_18,
+        Point::new(16, 108),
+        TEXT_COLOR,
+    )?;
+
+    Text::new("VerticalDrawableText", Point::new(16, 174), body_style).draw(display)?;
+    draw_vertical_text_box(
+        display,
+        MULTILINE_VERTICAL_TEXT,
+        &MULTILINE_DEMO_FONT_18,
+        Point::new(16, 196),
+        UNIFONT_COLOR,
+    )?;
+
+    Ok(())
+}
+
 fn draw_page<DRAW>(display: &mut DRAW, page_index: usize) -> Result<(), DRAW::Error>
 where
     DRAW: DrawTarget<Color = Rgb565>,
 {
-    if page_index % (FONT_PAGES.len() + 1) == FONT_PAGES.len() {
+    let page_count = FONT_PAGES.len() + 2;
+    let page_index = page_index % page_count;
+
+    if page_index == FONT_PAGES.len() {
         return draw_offset_page(display);
     }
+    if page_index == FONT_PAGES.len() + 1 {
+        return draw_multiline_page(display);
+    }
 
-    let page = &FONT_PAGES[page_index % FONT_PAGES.len()];
+    let page = &FONT_PAGES[page_index];
 
     display.clear(BG_COLOR)?;
 
@@ -344,14 +456,14 @@ where
     Text::new("FontData / DrawableText", Point::new(10, 42), body_style).draw(display)?;
     Text::new(page.title, Point::new(10, 58), body_style).draw(display)?;
 
-    let page_label = match page_index % (FONT_PAGES.len() + 1) {
-        0 => "page 1/7",
-        1 => "page 2/7",
-        2 => "page 3/7",
-        3 => "page 4/7",
-        4 => "page 5/7",
-        5 => "page 6/7",
-        _ => "page 7/7",
+    let page_label = match page_index {
+        0 => "page 1/8",
+        1 => "page 2/8",
+        2 => "page 3/8",
+        3 => "page 4/8",
+        4 => "page 5/8",
+        5 => "page 6/8",
+        _ => "page 7/8",
     };
     Text::new(page_label, Point::new(118, 58), body_style).draw(display)?;
 
@@ -431,11 +543,11 @@ async fn main(spawner: Spawner) -> ! {
         draw_page(&mut display, page_index).expect("bitmap font demo draw failed");
         info!(
             "embedded-bitmap-font demo page {} / {}: text = {}",
-            (page_index % (FONT_PAGES.len() + 1)) + 1,
-            FONT_PAGES.len() + 1,
+            (page_index % (FONT_PAGES.len() + 2)) + 1,
+            FONT_PAGES.len() + 2,
             SAMPLE_TEXT
         );
-        page_index = (page_index + 1) % (FONT_PAGES.len() + 1);
+        page_index = (page_index + 1) % (FONT_PAGES.len() + 2);
         Timer::after(Duration::from_secs(PAGE_SECONDS)).await;
     }
 }
